@@ -13,14 +13,19 @@ const statusOrders = [
   'in code review',
   'to release',
   'released',
+  'closed',
 ];
+
+function getClickUpTaskIdFromTitle(pullRequestTitle) {
+  const index = pullRequestTitle.indexOf('(#') + 2;
+
+  const clickUpTag = pullRequestTitle.substring(index);
+  return clickUpTag.substring(0, clickUpTag.indexOf(')'));
+}
 
 async function updateStatusIfNecessary(tagId, currentStatus, targetStatus) {
   const currentStatusOrder = statusOrders.indexOf(currentStatus);
   const targetStatusOrder = statusOrders.indexOf(targetStatus);
-
-  console.log('currentStatusOrder', currentStatusOrder);
-  console.log('targetStatusOrder', targetStatusOrder);
 
   if (currentStatusOrder < targetStatusOrder) {
     await axios({
@@ -28,13 +33,11 @@ async function updateStatusIfNecessary(tagId, currentStatus, targetStatus) {
       url: `https://api.clickup.com/api/v2/task/${tagId}`,
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': CLICKUP_API_KEY,
+        Authorization: CLICKUP_API_KEY,
       },
       data: {
         status: targetStatus,
       },
-    }).then(response => {
-      console.log('PUT Update', response.data);
     });
 
     return true;
@@ -43,45 +46,67 @@ async function updateStatusIfNecessary(tagId, currentStatus, targetStatus) {
   return false;
 }
 
-if (eventPayload.pull_request
-  && eventPayload.pull_request.requested_reviewers
-  && eventPayload.pull_request.requested_reviewers.length
-  && eventPayload.pull_request.assignees
-  && eventPayload.pull_request.assignees.length
-) {
-  const reviewerLogins = eventPayload.pull_request.requested_reviewers.map(
-    reviewer => reviewer.login
-  );
-  const assigneeLogins = eventPayload.pull_request.assignees.map(
-    assignee => assignee.login
-  );
+function isWaitingForReview() {
+  if (eventPayload.pull_request
+    && eventPayload.pull_request.requested_reviewers
+    && eventPayload.pull_request.requested_reviewers.length
+    && eventPayload.pull_request.assignees
+    && eventPayload.pull_request.assignees.length
+  ) {
+    const reviewerLogins = eventPayload.pull_request.requested_reviewers.map(
+      (reviewer) => reviewer.login,
+    );
+    const assigneeLogins = eventPayload.pull_request.assignees.map(
+      (assignee) => assignee.login,
+    );
 
-  const isInReview = assigneeLogins.some(assigneeLogin => reviewerLogins.some(reviewerLogin => reviewerLogin === assigneeLogin));
+    return assigneeLogins.some(
+      (assigneeLogin) => reviewerLogins.some(
+        (reviewerLogin) => reviewerLogin === assigneeLogin,
+      ),
+    );
+  }
 
-  console.log(' ===== isInReview', isInReview);
+  return false;
+}
+
+function isInCodeReview() {
+  return eventPayload && !!eventPayload.review;
+}
+
+function isApproved() {
+  if (eventPayload && eventPayload.review) {
+    return eventPayload.review.state === 'APPROVED';
+  }
+  return false;
 }
 
 if (eventPayload && eventPayload.pull_request && eventPayload.pull_request.title) {
   if (eventPayload.pull_request.title.includes('(#')) {
-    const index = eventPayload.pull_request.title.indexOf('(#') + 2;
-    const clickUpTag = eventPayload.pull_request.title.substring(index, index + 6);
+    const clickUpTaskId = getClickUpTaskIdFromTitle(eventPayload.pull_request.title);
 
-    console.log(' =========== Click Up Tag', clickUpTag, '=============');
+    let targetStatus = 'doing';
+    if (isWaitingForReview()) {
+      targetStatus = 'waiting for review';
+
+      if (isInCodeReview()) {
+        targetStatus = 'in code review';
+      }
+    }
+
+    if (isApproved()) {
+      targetStatus = 'to release';
+    }
 
     axios({
       method: 'GET',
-      url: `https://api.clickup.com/api/v2/task/${clickUpTag}`,
+      url: `https://api.clickup.com/api/v2/task/${clickUpTaskId}`,
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': CLICKUP_API_KEY,
-      }
-    }).then(async response => {
-      console.log('_______________ response\n', response.data);
-      console.log('_______________ status\n', response.data && response.data.status && response.data.status.status);
-      if (response.data.status.status) {
-        await updateStatusIfNecessary(clickUpTag, response.data.status.status, 'in code review');
-      }
+        Authorization: CLICKUP_API_KEY,
+      },
+    }).then(async (response) => {
+      await updateStatusIfNecessary(clickUpTaskId, response.data.status.status, targetStatus);
     });
   }
 }
-console.log(file);
