@@ -5,6 +5,39 @@ const CLICKUP_API_KEY = 'pk_4518205_4TA4J4EYV5R2LSP67ZK7K5KQ63S79MTG';
 const file = fs.readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8');
 const eventPayload = JSON.parse(file);
 
+const statusOrders = [
+  'to do',
+  'doing',
+  'waiting for review',
+  'in functionnal test',
+  'in code review',
+  'to release',
+  'released',
+];
+
+async function updateStatusIfNecessary(tagId, currentStatus, targetStatus) {
+  const currentStatusOrder = statusOrders.indexOf(currentStatus);
+  const targetStatusOrder = statusOrders.indexOf(targetStatus);
+
+  if (currentStatusOrder < targetStatusOrder) {
+    await axios({
+      method: 'PUT',
+      url: `https://api.clickup.com/api/v2/task/${clickUpTag}`,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': CLICKUP_API_KEY,
+      },
+      body: {
+        status: targetStatus,
+      },
+    });
+
+    return true;
+  }
+
+  return false;
+}
+
 if (eventPayload.pull_request
   && eventPayload.pull_request.requested_reviewers
   && eventPayload.pull_request.requested_reviewers.length
@@ -37,10 +70,13 @@ if (eventPayload && eventPayload.pull_request && eventPayload.pull_request.title
         'Content-Type': 'application/json',
         'Authorization': CLICKUP_API_KEY,
       }
-    }).then(response => {
+    }).then(async response => {
       console.log('_______________ response\n', response.data);
       console.log('_______________ status\n', response.data && response.data.status && response.data.status.status);
-    })
+      if (response.data.status.status) {
+        await updateStatusIfNecessary(clickUpTag, response.data.status.status, 'in code review');
+      }
+    });
   }
 }
 console.log(file);
