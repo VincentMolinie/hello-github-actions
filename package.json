@@ -1,0 +1,16 @@
+{
+  "name": "hello-gihub-actions",
+  "description": "",
+  "version": "0.0.0",
+  "author": "Vincent Molinié <molinie.vincent@gmail.com>",
+  "contributors": [
+  ],
+  "private": true,
+  "scripts": {
+    "updateClickupStatus": "node scripts/update-clickup-status.js"
+  },
+  "dependencies": {
+  },
+  "devDependencies": {
+  }
+}
