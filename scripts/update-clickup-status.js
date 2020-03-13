@@ -22,7 +22,7 @@ async function updateStatusIfNecessary(tagId, currentStatus, targetStatus) {
   if (currentStatusOrder < targetStatusOrder) {
     await axios({
       method: 'PUT',
-      url: `https://api.clickup.com/api/v2/task/${clickUpTag}`,
+      url: `https://api.clickup.com/api/v2/task/${tagId}`,
       headers: {
         'Content-Type': 'application/json',
         'Authorization': CLICKUP_API_KEY,
