@@ -30,7 +30,7 @@ async function updateStatusIfNecessary(tagId, currentStatus, targetStatus) {
         'Content-Type': 'application/json',
         'Authorization': CLICKUP_API_KEY,
       },
-      body: {
+      data: {
         status: targetStatus,
       },
     }).then(response => {
