@@ -33,6 +33,8 @@ async function updateStatusIfNecessary(tagId, currentStatus, targetStatus) {
       body: {
         status: targetStatus,
       },
+    }).then(response => {
+      console.log('PUT Update', response.data);
     });
 
     return true;
