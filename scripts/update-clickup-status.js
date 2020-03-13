@@ -39,6 +39,7 @@ if (eventPayload && eventPayload.pull_request && eventPayload.pull_request.title
       }
     }).then(response => {
       console.log('_______________ response\n', response.data);
+      console.log('_______________ status\n', response.data && response.data.status && response.data.status.status);
     })
   }
 }
