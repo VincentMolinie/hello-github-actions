@@ -19,6 +19,9 @@ async function updateStatusIfNecessary(tagId, currentStatus, targetStatus) {
   const currentStatusOrder = statusOrders.indexOf(currentStatus);
   const targetStatusOrder = statusOrders.indexOf(targetStatus);
 
+  console.log('currentStatusOrder', currentStatusOrder);
+  console.log('targetStatusOrder', targetStatusOrder);
+
   if (currentStatusOrder < targetStatusOrder) {
     await axios({
       method: 'PUT',
